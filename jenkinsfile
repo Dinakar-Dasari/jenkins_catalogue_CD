@@ -3,7 +3,6 @@ pipeline{
         label "agent-1"
     }
     environment {
-        SONAR_SCANNER_HOME = tool 'sonar-7.2';
         PROJECT = 'roboshop'
         COMPONENT = 'catalogue'
         REGION = 'us-east-1'
