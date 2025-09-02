@@ -2,7 +2,11 @@ pipeline{
     agent {
         label "agent-1"
     }
-    environment {
+
+    tools {
+        nodejs 'nodejs-20'
+    }
+    environment {   
         PROJECT = 'roboshop'
         COMPONENT = 'catalogue'
         REGION = 'us-east-1'
@@ -17,7 +21,7 @@ pipeline{
     stages{
         stage('DEPLOY'){
             steps{
-                withAWS(credentials:'creds', region: 'us-east-1'){
+                withAWS(credentials:'aws-creds', region: 'us-east-1'){
                     sh """
                         aws eks update-kubeconfig --region $REGION --name "$PROJECT-${params.deploy_to}"
                         kubectl apply -f 01-namespace.yaml
