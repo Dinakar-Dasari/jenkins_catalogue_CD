@@ -23,11 +23,34 @@ pipeline{
             steps{
                 withAWS(credentials:'aws-creds', region: 'us-east-1'){
                     sh """
-                        aws eks update-kubeconfig --region $REGION --name "$PROJECT-dev"
+                        aws eks update-kubeconfig --region $REGION --name "$PROJECT-${prams.deploy_to}"
                         kubectl apply -f 01-namespace.yaml
-                        sed -i "s/IMAGE_VERSION/${params.appVersion}/g" values-dev.yaml
-                        helm upgrade --install $COMPONENT -f values-dev.yaml -n $PROJECT .
+                        sed -i "s/IMAGE_VERSION/${params.appVersion}/g" values-${prams.deploy_to}.yaml
+                        helm upgrade --install $COMPONENT -f values-${prams.deploy_to}.yaml -n $PROJECT .
                     """               
+                }
+            }
+        }
+
+        stage('Deployment status') {
+            steps {
+                script{
+                    withAWS(credentials:'aws-creds', region: 'us-east-1'){
+                        def deployment_status = sh(returnStdout: true, script:"kubectl rollout status deployment/${COMPONENT} --timeout=30s -n ${PROJECT}").trim()
+                        if (deployment_status.contains("successfully rolled out")) {
+                            echo "Deployment success"
+                        } else {
+                            sh "helm rollback ${COMPONENT} -n ${PROJECT}"
+                            def rollback_status = sh(returnStdout: true, script:"kubectl rollout status deployment/${COMPONENT} --timeout=30s -n ${PROJECT}").trim()
+                            if (rollback_status.contains("successfully rolled out")) {
+                            error "Deployment failed, Rollback success"
+                            } else {
+                                error "Deployment failed, Rollback failed. Application is not running !!"
+                            }
+                        }
+
+                    }
+
                 }
             }
         }
